@@ -53,9 +53,11 @@ def edit_customer(customer_id: int, customer: CustomerInput):
 
 @app.delete("/customer/{customer_id}")
 def delete_customer(customer_id: int):
-    Customer.delete_customer(
+    deleted = Customer.delete_customer(
         customer_id=customer_id, database_connection=database_connection
     )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Customer not found")
     return {"message": "Customer deleted successfully"}
 
 
