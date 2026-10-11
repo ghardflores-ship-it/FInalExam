@@ -1,11 +1,11 @@
-"""SQLite connection and table setup."""
+"""SQLite connection and table setup for the Cinema Seat Reservation API."""
 
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-DATABASE_FILE = Path(__file__).resolve().parent.parent / "students.db"
+DATABASE_FILE = Path(__file__).resolve().parent.parent / "cinema.db"
 
 
 @contextmanager
@@ -14,6 +14,7 @@ def database_connection() -> Iterator[sqlite3.Connection]:
 
     connection = sqlite3.connect(DATABASE_FILE)
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
     try:
         yield connection
         connection.commit()
@@ -25,32 +26,28 @@ def database_connection() -> Iterator[sqlite3.Connection]:
 
 
 def initialize_database() -> None:
-    """Create the students table the first time the app runs."""
+    """Create the customers and reservations tables the first time the app runs."""
 
     with database_connection() as connection:
         connection.execute(
-            # Put your SQL query to create your tables here
             """
-            CREATE TABLE IF NOT EXISTS students (
+            CREATE TABLE IF NOT EXISTS customers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 age INTEGER NOT NULL CHECK (age >= 0)
             );
-
             """
         )
 
         connection.execute(
-            # Put your SQL query to create your tables here
             """
-            CREATE TABLE IF NOT EXISTS student_infos (
-                student_info_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                grade TEXT NOT NULL,
-                student_id int,
-                CONSTRAINT fk_Student
-                FOREIGN KEY (student_id)
-                REFERENCES students(id)
+            CREATE TABLE IF NOT EXISTS reservations (
+                reservation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                seat_number TEXT NOT NULL UNIQUE,
+                customer_id INTEGER,
+                CONSTRAINT fk_Customer
+                FOREIGN KEY (customer_id)
+                REFERENCES customers(id)
             );
-            
             """
         )
