@@ -224,5 +224,3 @@ Example request bodies:
 ```json
 { "seat_number": "A1", "customer_id": 1 }
 ```
-
-Use these as examples when building your own API routes.
