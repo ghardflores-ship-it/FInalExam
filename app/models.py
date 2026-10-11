@@ -3,105 +3,99 @@
 from pydantic import BaseModel, Field
 
 
-class StudentInput(BaseModel):
-    """Fields students can send when creating or updating a record."""
+class CustomerInput(BaseModel):
+    """Fields a customer can send when creating or updating a record."""
 
     name: str = Field(min_length=1)
     age: int = Field(ge=0)
 
     @staticmethod
-    def list_students(database_connection):
+    def list_customers(database_connection):
         with database_connection() as connection:
             rows = connection.execute(
-                """SELECT 
-                s.id, 
-                s.name, 
-                s.age, 
-                si.student_info_id, 
-                si.grade 
-            FROM students s
-            LEFT JOIN student_infos si ON s.id = si.student_id
-            ORDER BY s.id"""
+                """SELECT
+                    c.id,
+                    c.name,
+                    c.age,
+                    r.reservation_id,
+                    r.seat_number
+                FROM customers c
+                LEFT JOIN reservations r ON c.id = r.customer_id
+                ORDER BY c.id"""
             ).fetchall()
-        return [rows]
+        return [dict(row) for row in rows]
 
     @staticmethod
-    def create_student(student_input, database_connection):
+    def create_customer(customer_input, database_connection):
         with database_connection() as connection:
             cursor = connection.execute(
-                "INSERT INTO students (name, age) VALUES (?, ?)",
-                (student_input.name, student_input.age),
+                "INSERT INTO customers (name, age) VALUES (?, ?)",
+                (customer_input.name, customer_input.age),
             )
             row = connection.execute(
-                "SELECT id, name, age FROM students WHERE id = ?", (cursor.lastrowid,)
+                "SELECT id, name, age FROM customers WHERE id = ?",
+                (cursor.lastrowid,),
             ).fetchone()
-        return row
+        return dict(row)
 
     @staticmethod
-    def get_student(student_id, database_connection):
+    def get_customer(customer_id, database_connection):
         with database_connection() as connection:
             row = connection.execute(
-                "SELECT id, name, age FROM students WHERE id = ?", (student_id,)
+                "SELECT id, name, age FROM customers WHERE id = ?", (customer_id,)
             ).fetchone()
-        return row
+        return dict(row) if row else None
 
     @staticmethod
-    def update_student(student_id, student_input, database_connection):
+    def update_customer(customer_id, customer_input, database_connection):
         with database_connection() as connection:
-            cursor = connection.execute(
-                "UPDATE students SET name = ?, age = ? WHERE id = ?",
-                (student_input.name, student_input.age, student_id),
+            connection.execute(
+                "UPDATE customers SET name = ?, age = ? WHERE id = ?",
+                (customer_input.name, customer_input.age, customer_id),
             )
             row = connection.execute(
-                "SELECT id, name, age FROM students WHERE id = ?", (student_id,)
+                "SELECT id, name, age FROM customers WHERE id = ?", (customer_id,)
             ).fetchone()
-        return row
+        return dict(row) if row else None
 
     @staticmethod
-    def delete_student(student_id, database_connection):
+    def delete_customer(customer_id, database_connection):
         with database_connection() as connection:
-            cursor = connection.execute(
-                "DELETE FROM students WHERE id = ?", (student_id,)
+            # Remove their reservations first, otherwise the foreign key blocks the delete
+            connection.execute(
+                "DELETE FROM reservations WHERE customer_id = ?", (customer_id,)
             )
+            connection.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
 
 
-class Student(StudentInput):
-    """A student record returned by the API."""
+class Customer(CustomerInput):
+    """A customer record returned by the API."""
 
     id: int
 
-from pydantic import BaseModel, Field
 
-# 1. Keep your existing Student model
-class StudentInput(BaseModel):
-    """Fields students can send when creating or updating a record."""
-    name: str = Field(min_length=1)
-    age: int = Field(ge=0)
+class ReservationInput(BaseModel):
+    """Fields required to create a seat reservation."""
 
-    @staticmethod
-    def list_students(database_connection):
-        with database_connection() as connection:
-            rows = connection.execute(
-                "SELECT id, name, age FROM students ORDER BY id"
-            ).fetchall()
-        return rows
-
-
-# 2. Add a new input model for the student info fields
-class StudentInfoInput(BaseModel):
-    """Fields required to create a student info record."""
-    grade: str = Field(min_length=1)
-    student_id: int = Field(ge=1)  # ID must be a positive integer
+    seat_number: str = Field(min_length=1)
+    customer_id: int = Field(ge=1)
 
     @staticmethod
-    def create_student_info(student_info_input, database_connection):
+    def create_reservation(reservation_input, database_connection):
         with database_connection() as connection:
             cursor = connection.execute(
-                "INSERT INTO student_infos (grade, student_id) VALUES (?, ?)",
-                (student_info_input.grade, student_info_input.student_id),
+                "INSERT INTO reservations (seat_number, customer_id) VALUES (?, ?)",
+                (reservation_input.seat_number, reservation_input.customer_id),
             )
             row = connection.execute(
-                "SELECT student_info_id, grade, student_id FROM student_infos WHERE student_info_id = ?", 
-                (cursor.lastrowid,)
+                """SELECT reservation_id, seat_number, customer_id
+                FROM reservations WHERE reservation_id = ?""",
+                (cursor.lastrowid,),
             ).fetchone()
-        return row
+        return dict(row)
+
+
+class Reservation(ReservationInput):
+    """A reservation record returned by the API."""
+
+    reservation_id: int

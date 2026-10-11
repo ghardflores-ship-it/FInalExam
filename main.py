@@ -1,9 +1,11 @@
-"""Create the FastAPI app and connect its route modules. hello"""
+"""Create the FastAPI app and connect its route modules."""
 
-from fastapi import FastAPI
+import sqlite3
+
+from fastapi import FastAPI, HTTPException
 
 from app.database import database_connection, initialize_database
-from app.models import Student, StudentInput, StudentInfoInput
+from app.models import Customer, CustomerInput, ReservationInput
 
 app = FastAPI(title="Cinema Seat Reservation API", version="1.0.0")
 
@@ -13,52 +15,66 @@ def home():
     return {"message": "Welcome! Visit /docs to try the API."}
 
 
-@app.get("/students")
-def get_students():
-    result = Student.list_students(database_connection=database_connection)
-    return {"students": result}
+@app.get("/customers")
+def get_customers():
+    result = Customer.list_customers(database_connection=database_connection)
+    return {"customers": result}
 
 
-@app.get("/students/{student_id}")
-def get_student(student_id: int):
-    result = Student.get_student(
-        student_id=student_id, database_connection=database_connection
+@app.get("/customers/{customer_id}")
+def get_customer(customer_id: int):
+    result = Customer.get_customer(
+        customer_id=customer_id, database_connection=database_connection
     )
-    return {"student": result}
+    if result is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return {"customer": result}
 
 
-@app.post("/student")
-def create_student(student: StudentInput):
-    result = Student.create_student(
-        student_input=student, database_connection=database_connection
+@app.post("/customer")
+def create_customer(customer: CustomerInput):
+    result = Customer.create_customer(
+        customer_input=customer, database_connection=database_connection
     )
-    return {"student": result}
+    return {"customer": result}
 
 
-@app.put("/student/{student_id}")
-def edit_student(student_id: int, student: Student):
-    result = Student.update_student(
-        student_id=student_id,
-        student_input=student,
+@app.put("/customer/{customer_id}")
+def edit_customer(customer_id: int, customer: CustomerInput):
+    result = Customer.update_customer(
+        customer_id=customer_id,
+        customer_input=customer,
         database_connection=database_connection,
     )
-    return {"student": result}
+    if result is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return {"customer": result}
 
 
-@app.delete("/student/{student_id}")
-def delete_student(student_id: int):
-    Student.delete_student(
-        student_id=student_id, database_connection=database_connection
+@app.delete("/customer/{customer_id}")
+def delete_customer(customer_id: int):
+    Customer.delete_customer(
+        customer_id=customer_id, database_connection=database_connection
     )
-    return {"message": "Student deleted successfully"}
+    return {"message": "Customer deleted successfully"}
 
-@app.post("/student-info")
-def create_student_info(payload: StudentInfoInput):
-    result = StudentInfoInput.create_student_info(
-        student_info_input=payload, 
-        database_connection=database_connection
+
+@app.post("/reservation")
+def create_reservation(payload: ReservationInput):
+    customer = Customer.get_customer(
+        customer_id=payload.customer_id, database_connection=database_connection
     )
-    return {"student_info": result}
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    try:
+        result = ReservationInput.create_reservation(
+            reservation_input=payload, database_connection=database_connection
+        )
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="Seat already reserved")
+
+    return {"reservation": result}
 
 
 initialize_database()
