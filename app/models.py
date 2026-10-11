@@ -65,7 +65,11 @@ class CustomerInput(BaseModel):
             connection.execute(
                 "DELETE FROM reservations WHERE customer_id = ?", (customer_id,)
             )
-            connection.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+            cursor = connection.execute(
+                "DELETE FROM customers WHERE id = ?", (customer_id,)
+            )
+            deleted = cursor.rowcount > 0
+        return deleted
 
 
 class Customer(CustomerInput):
