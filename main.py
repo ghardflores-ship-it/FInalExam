@@ -3,9 +3,9 @@
 from fastapi import FastAPI
 
 from app.database import database_connection, initialize_database
-from app.models import Student, StudentInput
+from app.models import Student, StudentInput, StudentInfoInput
 
-app = FastAPI(title="Beginner Student API")
+app = FastAPI(title="Cinema Seat Reservation API", version="1.0.0")
 
 
 @app.get("/")
@@ -51,6 +51,14 @@ def delete_student(student_id: int):
         student_id=student_id, database_connection=database_connection
     )
     return {"message": "Student deleted successfully"}
+
+@app.post("/student-info")
+def create_student_info(payload: StudentInfoInput):
+    result = StudentInfoInput.create_student_info(
+        student_info_input=payload, 
+        database_connection=database_connection
+    )
+    return {"student_info": result}
 
 
 initialize_database()

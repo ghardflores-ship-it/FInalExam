@@ -35,6 +35,22 @@ def initialize_database() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 age INTEGER NOT NULL CHECK (age >= 0)
-            )
+            );
+
+            """
+        )
+
+        connection.execute(
+            # Put your SQL query to create your tables here
+            """
+            CREATE TABLE IF NOT EXISTS student_infos (
+                student_info_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                grade TEXT NOT NULL,
+                student_id int,
+                CONSTRAINT fk_Student
+                FOREIGN KEY (student_id)
+                REFERENCES students(id)
+            );
+            
             """
         )
